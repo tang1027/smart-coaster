@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>圖片分類上傳</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2em; }
+    img { max-width: 200px; margin-top: 10px; }
+    .result { font-weight: bold; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h2>選擇飲品圖片進行分類</h2>
+  <input type="file" id="fileInput" accept="image/*"><br>
+  <img id="preview" src="#"><br>
+  <div class="result" id="resultBox">尚未辨識</div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/你的AppsScriptID/exec"; // ← 替換成你的 API URL
+
+    document.getElementById("fileInput").addEventListener("change", function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onloadend = function () {
+        const base64 = reader.result.split(",")[1]; // 取得 base64 部分
+        document.getElementById("preview").src = reader.result;
+
+        // 建立要送出的 JSON
+        const data = {
+          image: base64,
+          mimeType: file.type
+        };
+
+        // 傳送到 Apps Script
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify(data),
+          headers: { "Content-Type": "application/json" }
+        })
+        .then(res => res.json())
+        .then(json => {
+          const resultText = json.result 
+            ? `分類：${json.result}（信心值：${(json.confidence * 100).toFixed(1)}%）`
+            : `辨識結果：${JSON.stringify(json)}`;
+          document.getElementById("resultBox").innerText = resultText;
+
+          // 如果需要回傳給 App，可以用 window.parent.postMessage
+          if (window.AppInventor) {
+            window.AppInventor.setWebViewString(resultText);
+          }
+        })
+        .catch(err => {
+          document.getElementById("resultBox").innerText = "錯誤：" + err;
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
+</body>
+</html>
